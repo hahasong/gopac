@@ -268,7 +268,7 @@ func main() {
 		domains = reduceDomains(domains)
 		pacContent = generatePacFast(domains, proxy)
 	}
-	err := ioutil.WriteFile(output, []byte(pacContent), 0644) // oct, not hex
+	err := ioutil.WriteFile(output, []byte(pacContent), 0644)
 	checkError(err)
 	elapsed := time.Since(t1)
 	fmt.Printf("Generate %s successful in %s\n", output, elapsed)
