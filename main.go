@@ -258,7 +258,6 @@ func main() {
 			checkError(err)
 			userRule = string(data)
 		}
-		fmt.Println(u.Scheme, u.Opaque, u.Host)
 	}
 	content = decodeGfwlist(content)
 	gfwlist := combineLists(content, userRule)
