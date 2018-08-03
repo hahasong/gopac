@@ -1,4 +1,4 @@
-package gopac
+package main
 
 import (
 	"encoding/base64"
