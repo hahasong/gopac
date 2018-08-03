@@ -1,4 +1,4 @@
-package main
+package gopac
 
 import (
 	"encoding/base64"
@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	flag "github.com/spf13/pflag"
 )
@@ -26,9 +28,9 @@ var (
 )
 
 func parseArgs() {
-	flag.StringVarP(&input, "input", "i", "./", "path to gfwlist")
-	flag.StringVarP(&output, "file", "f", "./", "path to output pac")
-	flag.StringVarP(&proxy, "proxy", "p", "", "the proxy parameter in the pac file, \nfor example, \"SOCKS5 127.0.0.1:1080;\"")
+	flag.StringVarP(&input, "input", "i", "", "path to gfwlist")
+	flag.StringVarP(&output, "file", "f", "proxy.pac", "path to output pac")
+	flag.StringVarP(&proxy, "proxy", "p", "SOCKS5 127.0.0.1:1080; SOCKS 127.0.0.1:1080; DIRECT", "the proxy parameter in the pac file, \nfor example, \"SOCKS5 127.0.0.1:1080;\"")
 	flag.StringVarP(&userRule, "user-rule", "", "", "user rule file, which will be appended to\n gfwlist")
 	flag.BoolVarP(&precise, "precise", "", false, "use adblock plus algorithm instead of O(1)\n lookup")
 	flag.Parse()
@@ -46,7 +48,7 @@ func decodeGfwlist(content string) string {
 }
 
 func getHostname(something string) string {
-	if !strings.HasPrefix(something, "http:") {
+	if !strings.HasPrefix(something, "http") {
 		something = "http://" + something
 	}
 	u, err := url.Parse(something)
@@ -57,10 +59,10 @@ func getHostname(something string) string {
 	return u.Hostname()
 }
 
-func addDomainToSet(s []string, something string) {
+func addDomainToSet(s *[]string, something string) {
 	hostName := getHostname(something)
 	if hostName != "" {
-		s = append(s, hostName)
+		*s = append(*s, hostName)
 	}
 }
 
@@ -69,12 +71,12 @@ func combineLists(content string, userRule string) []string {
 	if err != nil {
 		panic(err.Error())
 	}
-	builtinRules := strings.Split(string(buf), "/n")
-	gfwlist := strings.Split(content, "/n")
+	builtinRules := strings.Split(string(buf), "\n")
+	gfwlist := strings.Split(content, "\n")
 	gfwlist = append(gfwlist, builtinRules...)
 
 	if userRule != "" {
-		userRule := strings.Split(userRule, "/n")
+		userRule := strings.Split(userRule, "\n")
 		gfwlist = append(gfwlist, userRule...)
 	}
 	return gfwlist
@@ -102,7 +104,7 @@ func parseGfwlist(gfwlist []string) []string {
 		} else if strings.HasPrefix(line, "@") {
 			continue
 		}
-		addDomainToSet(domains, line)
+		addDomainToSet(&domains, line)
 	}
 	return domains
 }
@@ -112,7 +114,7 @@ func reduceDomains(domains []string) []string {
 	if err != nil {
 		panic(err.Error())
 	}
-	tlds := strings.Split(string(buf), "/n")
+	tlds := strings.Split(string(buf), "\n")
 	var newDomains []string
 	for _, domain := range domains {
 		domainParts := strings.Split(domain, ".")
@@ -153,7 +155,7 @@ func generatePacFast(domains []string, proxy string) string {
 		panic(err.Error())
 	}
 	proxyContent := string(buf)
-	var domainsMap map[string]int
+	domainsMap := map[string]int{}
 	for _, domain := range domains {
 		domainsMap[domain] = 1
 	}
@@ -162,7 +164,7 @@ func generatePacFast(domains []string, proxy string) string {
 		panic(err.Error())
 	}
 	proxyJs := string(bytes)
-	bytes, err = json.Marshal(domainsMap)
+	bytes, err = json.MarshalIndent(domainsMap, "", "    ")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -181,6 +183,7 @@ func generatePacPrecise(rules []string, proxy string) string {
 			if strings.HasPrefix(rule, "[") {
 				return ""
 			}
+			return rule
 		}
 		return ""
 	}
@@ -205,7 +208,7 @@ func generatePacPrecise(rules []string, proxy string) string {
 		panic(err.Error())
 	}
 	proxyJs := string(bytes)
-	bytes, err = json.Marshal(rules)
+	bytes, err = json.MarshalIndent(rules, "", "    ")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -215,7 +218,59 @@ func generatePacPrecise(rules []string, proxy string) string {
 	return proxyContent
 }
 
+func checkError(err error) {
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
 func main() {
 	parseArgs()
-	fmt.Printf("%v %T", input, input)
+	t1 := time.Now()
+	var content, pacContent string
+	if input != "" {
+		buf, err := ioutil.ReadFile(input)
+		checkError(err)
+		content = string(buf)
+	} else {
+		fmt.Printf("Downloading gfwlist from %s\n", GfwlistURL)
+		res, err := http.Get(GfwlistURL)
+		checkError(err)
+		data, err := ioutil.ReadAll(res.Body)
+		checkError(err)
+		content = string(data)
+	}
+
+	if userRule != "" {
+		u, err := url.Parse(userRule)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		if u.Scheme == "" || u.Opaque == "" {
+			buf, err := ioutil.ReadFile(userRule)
+			checkError(err)
+			userRule = string(buf)
+		} else {
+			fmt.Printf("Downloading user rules file from %s\n", userRule)
+			res, err := http.Get(userRule)
+			checkError(err)
+			data, err := ioutil.ReadAll(res.Body)
+			checkError(err)
+			userRule = string(data)
+		}
+		fmt.Println(u.Scheme, u.Opaque, u.Host)
+	}
+	content = decodeGfwlist(content)
+	gfwlist := combineLists(content, userRule)
+	if precise {
+		pacContent = generatePacPrecise(gfwlist, proxy)
+	} else {
+		domains := parseGfwlist(gfwlist)
+		domains = reduceDomains(domains)
+		pacContent = generatePacFast(domains, proxy)
+	}
+	err := ioutil.WriteFile(output, []byte(pacContent), 0644) // oct, not hex
+	checkError(err)
+	elapsed := time.Since(t1)
+	fmt.Printf("Generate %s successful in %s\n", output, elapsed)
 }
