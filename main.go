@@ -48,7 +48,7 @@ func decodeGfwlist(content string) string {
 }
 
 func getHostname(something string) string {
-	if !strings.HasPrefix(something, "http") {
+	if !strings.HasPrefix(something, "http:") && !strings.HasPrefix(something, "https:") {
 		something = "http://" + something
 	}
 	u, err := url.Parse(something)
