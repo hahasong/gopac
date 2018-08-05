@@ -7,7 +7,7 @@ Make sure you have a working Go environment.  Go version 1.8+ is supported.  [Se
 the install instructions for Go](https://golang.org/doc/install.html).
 
 To install cli, simply run:
-```
+```bash
 $ go get -u github.com/hahasong/gopac
 
 # build
