@@ -17,7 +17,7 @@ $ go build
 
 ## Usage
 
-```bash
+```
 -f, --file string       path to output pac (default "proxy.pac")
 -i, --input string      path to gfwlist
     --precise           use adblock plus algorithm instead of O(1)
