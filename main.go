@@ -18,8 +18,8 @@ import (
 const (
 	// GfwlistURL raw url
 	GfwlistURL = "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
-	// TldsURL raw url
-	TldsURL = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
+	// TldsURL raw url. or https://publicsuffix.org/list/effective_tld_names.dat
+	TldsURL = "https://publicsuffix.org/list/public_suffix_list.dat"
 )
 
 var (
