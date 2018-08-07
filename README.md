@@ -24,6 +24,8 @@ $ go build
                         lookup
 -p, --proxy string      the proxy parameter in the pac file, 
                         for example, "SOCKS5 127.0.0.1:1080;" (default "SOCKS5 127.0.0.1:1080; SOCKS 127.0.0.1:1080; DIRECT")
+    --tld               force updating tld list, best no more than
+                        once per month
     --user-rule string  user rule file, which will be appended to
                         gfwlist
 ```
