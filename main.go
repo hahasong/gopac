@@ -27,7 +27,7 @@ const (
 var (
 	input, output, proxy string
 	userRule             string
-	precise              bool
+	precise, tld         bool
 )
 
 func parseArgs() {
@@ -36,6 +36,7 @@ func parseArgs() {
 	flag.StringVarP(&proxy, "proxy", "p", "SOCKS5 127.0.0.1:1080; SOCKS 127.0.0.1:1080; DIRECT", "the proxy parameter in the pac file, \nfor example, \"SOCKS5 127.0.0.1:1080;\"")
 	flag.StringVarP(&userRule, "user-rule", "", "", "user rule file, which will be appended to\n gfwlist")
 	flag.BoolVarP(&precise, "precise", "", false, "use adblock plus algorithm instead of O(1)\n lookup")
+	flag.BoolVarP(&tld, "tld", "", false, "force updating tld list, best no more than\n once per month")
 	flag.Parse()
 }
 
@@ -225,7 +226,7 @@ func checkError(err error) {
 
 func getTldList() []string {
 	filepath := "resources/public_suffix_list.dat"
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath); os.IsNotExist(err) || tld {
 		out, err := os.Create(filepath)
 		checkError(err)
 		defer out.Close()
