@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -92,11 +94,11 @@ func parseGfwlist(gfwlist []string) []string {
 			line = strings.Replace(line, "*", "/", -1)
 		}
 		if strings.HasPrefix(line, "||") {
-			line = strings.TrimLeft(line, "||")
+			line = strings.TrimPrefix(line, "||")
 		} else if strings.HasPrefix(line, "|") {
-			line = strings.TrimLeft(line, "|")
+			line = strings.TrimPrefix(line, "|")
 		} else if strings.HasPrefix(line, ".") {
-			line = strings.TrimLeft(line, ".")
+			line = strings.TrimPrefix(line, ".")
 		}
 		if strings.HasPrefix(line, "!") {
 			continue
@@ -111,11 +113,7 @@ func parseGfwlist(gfwlist []string) []string {
 }
 
 func reduceDomains(domains []string) []string {
-	buf, err := ioutil.ReadFile("resources/tld.txt")
-	if err != nil {
-		panic(err.Error())
-	}
-	tlds := strings.Split(string(buf), "\n")
+	tlds := getTldList()
 	var newDomains []string
 	for _, domain := range domains {
 		domainParts := strings.Split(domain, ".")
@@ -223,6 +221,42 @@ func checkError(err error) {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+func getTldList() []string {
+	filepath := "resources/public_suffix_list.dat"
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		out, err := os.Create(filepath)
+		checkError(err)
+		defer out.Close()
+
+		fmt.Printf("Downloading TLD list from %s\n", TldsURL)
+		res, err := http.Get(TldsURL)
+		checkError(err)
+		defer res.Body.Close()
+
+		_, err = io.Copy(out, res.Body)
+		checkError(err)
+	}
+	buf, err := ioutil.ReadFile(filepath)
+	checkError(err)
+	var list []string
+	tlds := strings.Split(string(buf), "\n")
+	for _, line := range tlds {
+		if len([]rune(line)) < 1 || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if strings.HasPrefix(line, "*.") {
+			line = strings.TrimLeft(line, "*.")
+		}
+		if strings.HasPrefix(line, "!") {
+			continue
+		}
+		list = append(list, line)
+	}
+	err = ioutil.WriteFile("resources/tld.txt", []byte(strings.Join(list, "\n")), 0644)
+	checkError(err)
+	return list
 }
 
 func main() {
