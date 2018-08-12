@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"./lib/json"
+	"github.com/hahasong/gopac/lib/json"
 
 	flag "github.com/spf13/pflag"
 )
