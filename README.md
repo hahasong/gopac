@@ -34,6 +34,6 @@ $ go build
 
 ```bash
 $ ./gopac  # run in fast mode use default parameters
-$ ./gopac -f proxy_abp.pac  # run in precise mode and output file 'proxy_abp.pac'
+$ ./gopac -f proxy_abp.pac --precise  # run in precise mode and output file 'proxy_abp.pac'
 $ ./gopac --user-rule user-rule.txt  # merge user-rule.txt content to gfwlist
 ```
